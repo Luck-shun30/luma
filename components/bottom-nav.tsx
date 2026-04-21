@@ -24,7 +24,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky bottom-3 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <nav className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto grid max-w-md grid-cols-5 gap-2 rounded-[1.75rem] border border-white/14 bg-[rgba(8,14,20,0.88)] p-2 shadow-[0_24px_80px_rgba(2,8,13,0.42)] backdrop-blur-2xl">
         {navItems.map((item) => {
           const Icon = item.icon;
