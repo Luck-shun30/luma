@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BellRing, MapPin, TimerReset } from "lucide-react";
 
 import { SectionCard } from "@/components/section-card";
@@ -41,6 +42,14 @@ export default async function SettingsPage() {
           </div>
         </div>
       </SectionCard>
+
+      <Link
+        href="/onboarding"
+        prefetch={false}
+        className="flex items-center justify-center rounded-[1.4rem] bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(243,179,76,0.28)] active:translate-y-0"
+      >
+        Setup
+      </Link>
     </>
   );
 }

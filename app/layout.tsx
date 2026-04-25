@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     title: "Luma",
   },
   icons: {
-    apple: "/apple-icon",
-    icon: "/icon",
+    apple: "/smartcloset-logo.png",
+    icon: "/smartcloset-logo.png",
   },
 };
 

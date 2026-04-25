@@ -46,10 +46,10 @@ export default async function OnboardingPage() {
             return (
               <div
                 key={step.title}
-                className="flex gap-3 rounded-[1.4rem] border border-white/10 bg-black/10 px-4 py-3"
+                className="flex items-start gap-4 rounded-[1.4rem] border border-white/10 bg-black/10 px-4 py-4"
               >
-                <div className="rounded-full bg-white/8 p-2">
-                  <Icon className="h-4 w-4 text-[var(--accent)]" />
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/8">
+                  <Icon className="h-5 w-5 text-[var(--accent)]" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[var(--text-strong)]">{step.title}</p>

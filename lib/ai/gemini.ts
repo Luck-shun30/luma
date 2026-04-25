@@ -9,7 +9,7 @@ import {
 import { CHAT_SYSTEM_PROMPT } from "@/lib/ai/prompts/chat";
 import { buildIngestionPrompt, INGEST_PROMPT_VERSION } from "@/lib/ai/prompts/ingest";
 import { buildOutfitPrompt, OUTFIT_PROMPT_VERSION } from "@/lib/ai/prompts/outfit";
-import { geminiApiKey, hasGeminiEnv } from "@/lib/env";
+import { geminiApiKey, geminiEmbeddingModel, geminiModel, hasGeminiEnv } from "@/lib/env";
 import type {
   CandidateOutfit,
   StyleProfile,
@@ -37,7 +37,7 @@ function getGeminiClient() {
 
 async function generateStructured<T>({
   schema,
-  model = "gemini-2.5-flash",
+  model = geminiModel,
   contents,
   systemInstruction,
 }: {
@@ -396,7 +396,7 @@ export async function embedStyleText(input: string) {
 
   try {
     const response = await gemini.models.embedContent({
-      model: "gemini-embedding-001",
+      model: geminiEmbeddingModel,
       contents: input,
       config: {
         outputDimensionality: 768,
@@ -650,7 +650,7 @@ export async function runStylistAssistant(params: {
 
   try {
     const initial = await gemini.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: geminiModel,
       contents,
       config: {
         systemInstruction: `${CHAT_SYSTEM_PROMPT}\n\nKnown context:\n${params.contextSummary}`,
@@ -667,7 +667,7 @@ export async function runStylistAssistant(params: {
           "I found a grounded wardrobe answer, but it came back empty.",
         toolCalls: [] as ToolCallRecord[],
         promptVersion: "luma-chat-v2",
-        model: "gemini-2.5-flash",
+        model: geminiModel,
       };
     }
 
@@ -687,7 +687,7 @@ export async function runStylistAssistant(params: {
     }
 
     const final = await gemini.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: geminiModel,
       contents: buildToolPrompt({
         history: params.history.slice(-8),
         message: params.message,
@@ -708,7 +708,7 @@ export async function runStylistAssistant(params: {
       reply,
       toolCalls: executed,
       promptVersion: "luma-chat-v2",
-      model: "gemini-2.5-flash",
+      model: geminiModel,
     };
   } catch {
     return runFallbackStylistAssistant({

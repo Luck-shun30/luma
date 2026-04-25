@@ -16,13 +16,13 @@ export default function manifest(): MetadataRoute.Manifest {
     prefer_related_applications: false,
     icons: [
       {
-        src: "/icon?size=192",
+        src: "/smartcloset-logo.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icon?size=512",
+        src: "/smartcloset-logo.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

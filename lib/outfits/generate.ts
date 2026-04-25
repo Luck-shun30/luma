@@ -12,6 +12,7 @@ import {
 import { buildDeterministicCandidates, buildOutfitSlotKey } from "@/lib/outfits/engine";
 import { deriveTimeOfDay, deriveWeatherTags } from "@/lib/outfits/rules";
 import { getWeatherSnapshot } from "@/lib/weather/open-meteo";
+import { geminiModel } from "@/lib/env";
 import type { OutfitSuggestion } from "@/lib/types";
 
 export async function generateOutfitForUser(params: {
@@ -105,7 +106,7 @@ export async function generateOutfitForUser(params: {
     id: crypto.randomUUID(),
     userId: params.userId,
     runType: "outfit",
-    model: "gemini-2.5-flash",
+    model: geminiModel,
     promptVersion: OUTFIT_PROMPT_VERSION,
     input: {
       vibePrompt: params.vibePrompt ?? "",

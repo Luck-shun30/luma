@@ -5,6 +5,7 @@ import { styleProfileUpdateSchema } from "@/lib/ai/schemas";
 import { buildPromptUsage, embedStyleText, summarizeStylePreferences } from "@/lib/ai/gemini";
 import { requireCurrentUserContext } from "@/lib/auth/session";
 import { getStyleProfile, saveAiRun, upsertStyleProfile } from "@/lib/data/repository";
+import { geminiEmbeddingModel } from "@/lib/env";
 
 export async function POST(request: Request) {
   try {
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       id: crypto.randomUUID(),
       userId: user.userId,
       runType: "embed",
-      model: "gemini-embedding-001",
+      model: geminiEmbeddingModel,
       promptVersion: "luma-style-summary-v1",
       input: body,
       output: {

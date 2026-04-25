@@ -26,6 +26,10 @@ function buildSlotKey(outfit: OutfitSuggestion["primarySlots"]) {
   });
 }
 
+function getItemImageUrl(item: WardrobeItem) {
+  return item.asset?.isolatedPath ?? item.asset?.croppedPath ?? item.asset?.originalPath ?? null;
+}
+
 export function TodayOutfitCard({
   outfit,
   itemsById,
@@ -36,11 +40,13 @@ export function TodayOutfitCard({
   const [currentOutfit, setCurrentOutfit] = useState(outfit);
   const [status, setStatus] = useState<string | null>(null);
   const [seenSlotKeys, setSeenSlotKeys] = useState<string[]>([buildSlotKey(outfit.primarySlots)]);
+  const [showAllReasoning, setShowAllReasoning] = useState(false);
 
   useEffect(() => {
     setCurrentOutfit(outfit);
     setSeenSlotKeys([buildSlotKey(outfit.primarySlots)]);
     setStatus(null);
+    setShowAllReasoning(false);
   }, [outfit]);
 
   const primary = [
@@ -53,6 +59,9 @@ export function TodayOutfitCard({
       describeItem(itemId, itemsById),
     ),
   ].filter(Boolean) as WardrobeItem[];
+  const visibleReasoning = showAllReasoning
+    ? currentOutfit.reasoning
+    : currentOutfit.reasoning.slice(0, 1);
 
   const sendFeedback = async (reaction: "like" | "dislike" | "accept" | "reject") => {
     const response = await fetch(`/api/outfits/${currentOutfit.id}/feedback`, {
@@ -115,6 +124,7 @@ export function TodayOutfitCard({
       const payload = (await response.json()) as { outfit: OutfitSuggestion };
       const nextKey = buildSlotKey(payload.outfit.primarySlots);
       setCurrentOutfit(payload.outfit);
+      setShowAllReasoning(false);
       setSeenSlotKeys((current) =>
         current.includes(nextKey) ? current : [...current, nextKey],
       );
@@ -149,25 +159,44 @@ export function TodayOutfitCard({
           {primary.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between rounded-[1.35rem] border border-white/10 bg-black/10 px-4 py-3"
+              className="flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-black/10 p-2.5"
             >
-              <div>
-                <p className="text-sm font-semibold text-[var(--text-strong)]">{item.name}</p>
+              {getItemImageUrl(item) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={getItemImageUrl(item) ?? ""}
+                  alt=""
+                  className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+                />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[var(--text-strong)]">{item.name}</p>
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-soft)]">
                   {item.category}
                 </p>
+                <p className="truncate text-xs text-[var(--text-soft)]">{item.colors.join(" / ")}</p>
               </div>
-              <span className="text-xs text-[var(--text-soft)]">{item.colors.join(" / ")}</span>
             </div>
           ))}
         </div>
 
         <div className="space-y-2">
-          {currentOutfit.reasoning.map((reason) => (
+          {visibleReasoning.map((reason) => (
             <p key={reason} className="text-sm leading-6 text-[var(--text-soft)]">
               {reason}
             </p>
           ))}
+          {currentOutfit.reasoning.length > 1 ? (
+            <button
+              type="button"
+              onClick={() => setShowAllReasoning((current) => !current)}
+              className="flex w-full items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]"
+            >
+              <span className="h-px flex-1 bg-white/12" />
+              {showAllReasoning ? "Show less" : "Show more"}
+              <span className="h-px flex-1 bg-white/12" />
+            </button>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -181,7 +210,7 @@ export function TodayOutfitCard({
                 setStatus(error instanceof Error ? error.message : "Could not save feedback.");
               }
             }}
-            className="flex items-center justify-center gap-2 rounded-[1.3rem] bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-ink)]"
+            className="flex items-center justify-center gap-2 rounded-[1.3rem] bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(243,179,76,0.28)] active:translate-y-0"
           >
             <ThumbsUp className="h-4 w-4" />
             Wear this
@@ -191,12 +220,13 @@ export function TodayOutfitCard({
             onClick={async () => {
               try {
                 await sendFeedback("dislike");
-                setStatus("Feedback saved. Luma will steer away from this pairing.");
+                setStatus("Finding a better fit...");
+                await regenerate();
               } catch (error) {
                 setStatus(error instanceof Error ? error.message : "Could not save feedback.");
               }
             }}
-            className="flex items-center justify-center gap-2 rounded-[1.3rem] border border-white/12 px-4 py-3 text-sm font-semibold text-[var(--text-strong)]"
+            className="flex items-center justify-center gap-2 rounded-[1.3rem] border border-white/12 px-4 py-3 text-sm font-semibold text-[var(--text-strong)] transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/70 hover:bg-white/8 active:translate-y-0"
           >
             <ThumbsDown className="h-4 w-4" />
             Not my vibe

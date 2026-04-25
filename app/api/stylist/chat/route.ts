@@ -99,15 +99,20 @@ export async function POST(request: Request) {
             .filter(Boolean)
             .map((itemId) => {
               const item = itemsById.get(String(itemId));
-              return item
-                ? {
-                    id: item.id,
-                    name: item.name,
-                    category: item.category,
-                    colors: item.colors,
-                  }
-                : {
-                    id: String(itemId),
+                  return item
+                    ? {
+                        id: item.id,
+                        name: item.name,
+                        category: item.category,
+                        colors: item.colors,
+                        imageUrl:
+                          item.asset?.isolatedPath ??
+                          item.asset?.croppedPath ??
+                          item.asset?.originalPath ??
+                          null,
+                      }
+                    : {
+                        id: String(itemId),
                   };
             });
 

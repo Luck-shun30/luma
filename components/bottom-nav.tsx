@@ -38,7 +38,7 @@ export function BottomNav() {
               className={cn(
                 "flex flex-col items-center gap-1 rounded-2xl px-2 py-3 text-[0.7rem] font-medium transition duration-200",
                 active
-                  ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                  ? "bg-[var(--accent)] text-black"
                   : "text-[var(--text-soft)] hover:bg-white/6 hover:text-[var(--text-strong)]",
               )}
             >

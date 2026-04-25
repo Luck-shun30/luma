@@ -7,6 +7,7 @@ import {
   updateProcessingJob,
 } from "@/lib/data/repository";
 import { persistDerivedGarmentAssets, persistOriginalAsset } from "@/lib/storage/index";
+import { geminiModel } from "@/lib/env";
 import type { ProcessingJob, WardrobeAsset, WardrobeItem } from "@/lib/types";
 
 function normalizeProcessingError(error: unknown) {
@@ -140,7 +141,7 @@ export async function processWardrobeUpload(params: {
       id: crypto.randomUUID(),
       userId: params.userId,
       runType: "ingest",
-      model: "gemini-2.5-flash",
+      model: geminiModel,
       promptVersion: INGEST_PROMPT_VERSION,
       input: {
         fileName: params.fileName,
@@ -178,7 +179,7 @@ export async function processWardrobeUpload(params: {
       id: crypto.randomUUID(),
       userId: params.userId,
       runType: "ingest",
-      model: "gemini-2.5-flash",
+      model: geminiModel,
       promptVersion: INGEST_PROMPT_VERSION,
       input: {
         fileName: params.fileName,

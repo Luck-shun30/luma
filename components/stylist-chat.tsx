@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Send } from "lucide-react";
 
 import type { StylistMessage } from "@/lib/types";
@@ -26,6 +26,13 @@ export function StylistChat({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState(threadId);
+  const messageListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+    messageList.scrollTop = messageList.scrollHeight;
+  }, [messages, busy]);
 
   const getOutfitItemsFromMessage = (message: StylistMessage) => {
     const generateOutfitCall = message.toolCalls.find(
@@ -54,12 +61,14 @@ export function StylistChat({
           name?: string;
           category?: string;
           colors?: string[];
+          imageUrl?: string | null;
         };
         return {
           id: item.id ?? crypto.randomUUID(),
           name: item.name ?? "Wardrobe item",
           category: item.category ?? "item",
           colors: Array.isArray(item.colors) ? item.colors : [],
+          imageUrl: item.imageUrl ?? null,
         };
       });
   };
@@ -124,8 +133,11 @@ export function StylistChat({
   };
 
   return (
-    <div className="flex min-h-[28rem] flex-col gap-4">
-      <div className="flex flex-1 flex-col gap-3 rounded-[2rem] border border-white/12 bg-white/6 p-4">
+    <div className="flex h-[clamp(18rem,calc(100dvh-23rem),34rem)] flex-col gap-4">
+      <div
+        ref={messageListRef}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain rounded-[2rem] border border-white/12 bg-white/6 p-4 pr-3 scroll-smooth"
+      >
         {messages.map((message) => (
           <div
             key={message.id}
@@ -148,24 +160,27 @@ export function StylistChat({
                     {outfitItems.map((item) => (
                       <article
                         key={item.id}
-                        className="rounded-2xl border border-white/15 bg-black/15 p-3"
+                        className="flex items-center gap-3 rounded-2xl border border-white/15 bg-black/15 p-2.5"
                       >
-                        <p className="text-sm font-semibold text-[var(--text-strong)]">{item.name}</p>
-                        <p className="text-[0.68rem] uppercase tracking-[0.2em] text-[var(--text-soft)]">
-                          {titleCase(item.category)}
-                        </p>
-                        {item.colors.length ? (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {item.colors.slice(0, 3).map((color) => (
-                              <span
-                                key={`${item.id}-${color}`}
-                                className="rounded-full border border-white/10 px-2 py-0.5 text-[0.65rem] uppercase tracking-[0.16em] text-[var(--text-soft)]"
-                              >
-                                {color}
-                              </span>
-                            ))}
-                          </div>
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                          />
                         ) : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[var(--text-strong)]">{item.name}</p>
+                          <p className="text-[0.68rem] uppercase tracking-[0.2em] text-[var(--text-soft)]">
+                            {titleCase(item.category)}
+                          </p>
+                          {item.colors.length ? (
+                            <p className="truncate text-xs text-[var(--text-soft)]">
+                              {item.colors.slice(0, 3).join(" / ")}
+                            </p>
+                          ) : null}
+                        </div>
                       </article>
                     ))}
                   </div>

@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function SectionCard({
-  eyebrow,
   title,
-  description,
   action,
   children,
   className,
@@ -26,19 +24,9 @@ export function SectionCard({
     >
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="space-y-1">
-          {eyebrow ? (
-            <p className="text-[0.68rem] font-medium uppercase tracking-[0.24em] text-[var(--text-soft)]">
-              {eyebrow}
-            </p>
-          ) : null}
-          <h2 className="text-lg font-semibold tracking-tight text-[var(--text-strong)]">
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-[var(--text-strong)]">
             {title}
           </h2>
-          {description ? (
-            <p className="max-w-[34ch] text-sm leading-6 text-[var(--text-soft)]">
-              {description}
-            </p>
-          ) : null}
         </div>
         {action}
       </header>
