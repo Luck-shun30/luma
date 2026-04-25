@@ -62,7 +62,7 @@ export const wardrobeItemPatchSchema = z.object({
   size: z.string().optional(),
   formality: z.enum(["casual", "smart-casual", "formal"]).optional(),
   seasonality: z.array(z.string()).optional(),
-  status: z.enum(["needs_review", "active", "archived"]).optional(),
+  status: z.enum(["active", "archived"]).optional(),
 });
 
 export const styleProfileUpdateSchema = z.object({

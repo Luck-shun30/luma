@@ -2,7 +2,6 @@ export type DataMode = "demo" | "supabase";
 
 export type WardrobeStatus =
   | "processing"
-  | "needs_review"
   | "active"
   | "archived";
 

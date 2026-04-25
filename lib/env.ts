@@ -10,6 +10,7 @@ const envSchema = z.object({
   GOOGLE_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   GEMINI_EMBEDDING_MODEL: z.string().min(1).optional(),
+  GEMINI_IMAGE_MODEL: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   INNGEST_EVENT_KEY: z.string().min(1).optional(),
   INNGEST_SIGNING_KEY: z.string().min(1).optional(),
@@ -25,6 +26,7 @@ export const env = envSchema.parse({
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   GEMINI_MODEL: process.env.GEMINI_MODEL,
   GEMINI_EMBEDDING_MODEL: process.env.GEMINI_EMBEDDING_MODEL,
+  GEMINI_IMAGE_MODEL: process.env.GEMINI_IMAGE_MODEL,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
   INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
@@ -46,6 +48,9 @@ export const geminiModel = env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 export const geminiEmbeddingModel =
   env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
+
+export const geminiImageModel =
+  env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image-preview";
 
 export const hasSupabaseEnv = Boolean(
   env.NEXT_PUBLIC_SUPABASE_URL && supabasePublicKey,

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { z } from "zod";
 
 import {
@@ -9,7 +9,13 @@ import {
 import { CHAT_SYSTEM_PROMPT } from "@/lib/ai/prompts/chat";
 import { buildIngestionPrompt, INGEST_PROMPT_VERSION } from "@/lib/ai/prompts/ingest";
 import { buildOutfitPrompt, OUTFIT_PROMPT_VERSION } from "@/lib/ai/prompts/outfit";
-import { geminiApiKey, geminiEmbeddingModel, geminiModel, hasGeminiEnv } from "@/lib/env";
+import {
+  geminiApiKey,
+  geminiEmbeddingModel,
+  geminiImageModel,
+  geminiModel,
+  hasGeminiEnv,
+} from "@/lib/env";
 import type {
   CandidateOutfit,
   StyleProfile,
@@ -191,6 +197,48 @@ function buildFallbackWardrobeExtraction(fileName: string) {
       },
     ],
   });
+}
+
+const NANO_BANANA_CLOTHING_PROMPT =
+  "Clean up this image by extracting the clothes, putting them on a white background, and making it look like a stock image of this clothing.";
+
+export async function cleanClothingImageWithNanoBanana(params: {
+  buffer: Buffer;
+  mimeType: string;
+}) {
+  const gemini = getGeminiClient();
+
+  if (!gemini) {
+    return null;
+  }
+
+  try {
+    const response = await gemini.models.generateContent({
+      model: geminiImageModel,
+      contents: [
+        {
+          inlineData: {
+            mimeType: params.mimeType,
+            data: params.buffer.toString("base64"),
+          },
+        },
+        {
+          text: NANO_BANANA_CLOTHING_PROMPT,
+        },
+      ],
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = parts.find((part) => part.inlineData?.data);
+    const data = imagePart?.inlineData?.data;
+
+    return data ? Buffer.from(data, "base64") : null;
+  } catch {
+    return null;
+  }
 }
 
 function pickSearchQuery(message: string) {

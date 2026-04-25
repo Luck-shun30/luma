@@ -15,6 +15,17 @@ import { getWeatherSnapshot } from "@/lib/weather/open-meteo";
 import { geminiModel } from "@/lib/env";
 import type { OutfitSuggestion } from "@/lib/types";
 
+function collectSlotItemIds(slots: OutfitSuggestion["primarySlots"]) {
+  return [
+    slots.top,
+    slots.bottom,
+    slots.onePiece,
+    slots.outerwear,
+    slots.shoes,
+    ...(slots.accessories ?? []),
+  ].filter((itemId): itemId is string => Boolean(itemId));
+}
+
 export async function generateOutfitForUser(params: {
   userId: string;
   vibePrompt?: string;
@@ -46,10 +57,26 @@ export async function generateOutfitForUser(params: {
     ...buildSuggestionExclusionKeys(previousSuggestions),
     ...(params.excludeSlotKeys ?? []),
   ]);
+  const previouslySuggestedItemIds = new Set(
+    previousSuggestions.flatMap((suggestion) => [
+      ...collectSlotItemIds(suggestion.primarySlots),
+      ...suggestion.alternateSlots.flatMap((slots) => collectSlotItemIds(slots)),
+    ]),
+  );
   const unseenCandidates = candidates.filter(
+    (candidate) =>
+      !excludedKeys.has(buildOutfitSlotKey(candidate.slots)) &&
+      collectSlotItemIds(candidate.slots).every((itemId) => !previouslySuggestedItemIds.has(itemId)),
+  );
+  const unseenKeyCandidates = candidates.filter(
     (candidate) => !excludedKeys.has(buildOutfitSlotKey(candidate.slots)),
   );
-  const availableCandidates = unseenCandidates.length > 0 ? unseenCandidates : candidates;
+  const availableCandidates =
+    unseenCandidates.length > 0
+      ? unseenCandidates
+      : unseenKeyCandidates.length > 0
+        ? unseenKeyCandidates
+        : candidates;
 
   if (!availableCandidates.length) {
     throw new Error("Not enough wardrobe items to generate an outfit.");

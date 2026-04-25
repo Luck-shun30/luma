@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import type { WardrobeItem } from "@/lib/types";
-import { cn, formatWearDate, titleCase } from "@/lib/utils";
+import { formatWearDate, titleCase } from "@/lib/utils";
 
 type WardrobeDraft = {
   name: string;
@@ -17,7 +17,6 @@ type WardrobeDraft = {
   size: string;
   formality: WardrobeItem["formality"];
   seasonality: string;
-  status: Exclude<WardrobeItem["status"], "processing">;
 };
 
 function createDraft(item: WardrobeItem): WardrobeDraft {
@@ -31,8 +30,24 @@ function createDraft(item: WardrobeItem): WardrobeDraft {
     size: item.size,
     formality: item.formality,
     seasonality: item.seasonality.join(", "),
-    status: item.status === "processing" ? "needs_review" : item.status,
   };
+}
+
+type SortKey = "newest" | "name" | "category" | "least-worn";
+
+function getSearchText(item: WardrobeItem) {
+  return [
+    item.name,
+    item.category,
+    item.subcategory,
+    item.colors.join(" "),
+    item.fabric,
+    item.pattern,
+    item.seasonality.join(" "),
+    item.styleTags.join(" "),
+  ]
+    .join(" ")
+    .toLowerCase();
 }
 
 export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
@@ -42,6 +57,8 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
   const [draft, setDraft] = useState<WardrobeDraft | null>(null);
   const [busyAction, setBusyAction] = useState<"save" | "delete" | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
 
   const selectedItem = useMemo(
     () => localItems.find((item) => item.id === selectedId) ?? null,
@@ -85,7 +102,6 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
         .split(",")
         .map((entry) => entry.trim())
         .filter(Boolean),
-      status: draft.status,
     };
 
     try {
@@ -146,10 +162,56 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
     }
   };
 
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const visible = normalizedQuery
+      ? localItems.filter((item) => getSearchText(item).includes(normalizedQuery))
+      : localItems;
+
+    return [...visible].sort((a, b) => {
+      if (sortKey === "name") {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortKey === "category") {
+        return `${a.category} ${a.name}`.localeCompare(`${b.category} ${b.name}`);
+      }
+      if (sortKey === "least-worn") {
+        return a.wearCount - b.wearCount || a.name.localeCompare(b.name);
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [localItems, query, sortKey]);
+
   return (
     <>
+      <div className="space-y-3">
+        <label className="flex items-center gap-3 rounded-[1.35rem] border border-white/12 bg-black/12 px-4 py-3">
+          <Search className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search wardrobe"
+            className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-strong)] outline-none placeholder:text-[var(--text-soft)]"
+          />
+        </label>
+
+        <label className="flex items-center gap-3 rounded-[1.35rem] border border-white/12 bg-black/12 px-4 py-3">
+          <SlidersHorizontal className="h-4 w-4 shrink-0 text-[var(--text-soft)]" />
+          <select
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value as SortKey)}
+            className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-strong)] outline-none"
+          >
+            <option value="newest">Newest first</option>
+            <option value="name">Name</option>
+            <option value="category">Category</option>
+            <option value="least-worn">Least worn</option>
+          </select>
+        </label>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
-        {localItems.map((item) => (
+        {filteredItems.map((item) => (
           <article
             key={item.id}
             className="overflow-hidden rounded-[1.6rem] border border-white/12 bg-[rgba(255,255,255,0.06)]"
@@ -180,16 +242,6 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
                     <p className="text-sm font-semibold tracking-tight text-[var(--text-strong)]">
                       {item.name}
                     </p>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-1 text-[0.62rem] uppercase tracking-[0.18em]",
-                        item.status === "active"
-                          ? "bg-[var(--accent)]/18 text-[var(--accent)]"
-                          : "bg-white/8 text-[var(--text-soft)]",
-                      )}
-                    >
-                      {item.status === "needs_review" ? "Review" : titleCase(item.status)}
-                    </span>
                   </div>
                   <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-soft)]">
                     {titleCase(item.category)}
@@ -212,19 +264,22 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
                   <span>{formatWearDate(item.lastWornAt)}</span>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-[var(--text-soft)]">
-                  <Pencil className="h-3.5 w-3.5" />
-                  Tap to edit or delete
-                </div>
+                <p className="text-xs text-[var(--text-soft)]">Tap to edit</p>
               </div>
             </button>
           </article>
         ))}
       </div>
 
+      {filteredItems.length === 0 ? (
+        <div className="rounded-[1.6rem] border border-white/12 bg-white/6 p-5 text-sm text-[var(--text-soft)]">
+          No wardrobe items match your search.
+        </div>
+      ) : null}
+
       {selectedItem && draft ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/55 p-3 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-[2rem] border border-white/12 bg-[var(--canvas-soft)] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 p-3 backdrop-blur-sm">
+          <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-[2rem] border border-white/12 bg-[var(--canvas-soft)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--text-soft)]">
@@ -352,7 +407,7 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className="block space-y-2">
                   <span className="text-sm text-[var(--text-soft)]">Formality</span>
                   <select
@@ -372,28 +427,6 @@ export function WardrobeGrid({ items }: { items: WardrobeItem[] }) {
                     <option value="casual">Casual</option>
                     <option value="smart-casual">Smart casual</option>
                     <option value="formal">Formal</option>
-                  </select>
-                </label>
-
-                <label className="block space-y-2">
-                  <span className="text-sm text-[var(--text-soft)]">Status</span>
-                  <select
-                    value={draft.status}
-                    onChange={(event) =>
-                      setDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              status: event.target.value as WardrobeDraft["status"],
-                            }
-                          : current,
-                      )
-                    }
-                    className="w-full rounded-[1.1rem] border border-white/12 bg-black/12 px-4 py-3 text-sm text-[var(--text-strong)] outline-none"
-                  >
-                    <option value="needs_review">Needs review</option>
-                    <option value="active">Active</option>
-                    <option value="archived">Archived</option>
                   </select>
                 </label>
               </div>

@@ -1,5 +1,10 @@
 import { INGEST_PROMPT_VERSION } from "@/lib/ai/prompts/ingest";
-import { buildItemName, buildPromptUsage, extractWardrobeGarments } from "@/lib/ai/gemini";
+import {
+  buildItemName,
+  buildPromptUsage,
+  cleanClothingImageWithNanoBanana,
+  extractWardrobeGarments,
+} from "@/lib/ai/gemini";
 import {
   createProcessingJob,
   insertProcessedWardrobeItem,
@@ -82,16 +87,17 @@ export async function processWardrobeUpload(params: {
         sourceBuffer: params.buffer,
         mask: garment.mask,
         box2d: garment.box_2d,
+        cleanupImage: (buffer) =>
+          cleanClothingImageWithNanoBanana({
+            buffer,
+            mimeType: "image/png",
+          }),
       });
-
-      const requiresReview =
-        extraction.garments.length > 1 ||
-        Object.values(garment.confidence).some((value) => value < 0.7);
 
       const item: WardrobeItem = {
         id: itemId,
         userId: params.userId,
-        status: requiresReview ? "needs_review" : "active",
+        status: "active",
         name: buildItemName(garment.label, garment.colors),
         category: garment.category,
         subcategory: garment.subcategory,
@@ -121,7 +127,7 @@ export async function processWardrobeUpload(params: {
         isolatedPath: derived.isolatedPath,
         maskPath: derived.maskPath,
         bbox: derived.bbox,
-        qualityFlags: requiresReview ? ["needs_review"] : [],
+        qualityFlags: [],
       };
 
       await insertProcessedWardrobeItem({ item, asset });

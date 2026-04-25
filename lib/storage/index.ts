@@ -79,6 +79,7 @@ export async function persistDerivedGarmentAssets(params: {
   sourceBuffer: Buffer;
   mask: string;
   box2d: [number, number, number, number];
+  cleanupImage?: (buffer: Buffer) => Promise<Buffer | null>;
 }) {
   const metadata = await sharp(params.sourceBuffer).metadata();
   const width = metadata.width ?? 1024;
@@ -116,6 +117,11 @@ export async function persistDerivedGarmentAssets(params: {
     } catch {
       safeMaskBuffer = null;
     }
+  }
+
+  const cleaned = params.cleanupImage ? await params.cleanupImage(cropped).catch(() => null) : null;
+  if (cleaned) {
+    isolated = await sharp(cleaned).png().toBuffer();
   }
 
   const croppedUrl = await persistAsset(

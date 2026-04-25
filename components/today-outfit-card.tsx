@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, ThumbsDown, ThumbsUp } from "lucide-react";
+import { RefreshCw, Shuffle, ThumbsDown, ThumbsUp } from "lucide-react";
 
-import type { OutfitSuggestion, WardrobeItem } from "@/lib/types";
+import type { OutfitSlotMap, OutfitSlotName, OutfitSuggestion, WardrobeItem } from "@/lib/types";
 
 async function readErrorMessage(response: Response) {
   try {
@@ -26,8 +26,67 @@ function buildSlotKey(outfit: OutfitSuggestion["primarySlots"]) {
   });
 }
 
+function collectSlotItemIds(slots: OutfitSlotMap) {
+  return [
+    slots.top,
+    slots.bottom,
+    slots.onePiece,
+    slots.outerwear,
+    slots.shoes,
+    ...(slots.accessories ?? []),
+  ].filter((itemId): itemId is string => Boolean(itemId));
+}
+
 function getItemImageUrl(item: WardrobeItem) {
   return item.asset?.isolatedPath ?? item.asset?.croppedPath ?? item.asset?.originalPath ?? null;
+}
+
+function inferSlotFromItem(item: WardrobeItem): OutfitSlotName | null {
+  const category = item.category.toLowerCase();
+  const subcategory = item.subcategory.toLowerCase();
+
+  if (["top", "shirt", "tee", "blouse", "tank"].includes(category) || ["shirt", "tee", "blouse", "tank"].includes(subcategory)) {
+    return "top";
+  }
+  if (["bottom", "trousers", "pants", "jeans", "skirt", "shorts"].includes(category) || ["trousers", "pants", "jeans", "skirt", "shorts"].includes(subcategory)) {
+    return "bottom";
+  }
+  if (["dress", "jumpsuit", "romper"].includes(category) || ["dress", "jumpsuit", "romper"].includes(subcategory) || item.layerRole === "full-look") {
+    return "onePiece";
+  }
+  if (["outerwear", "coat", "jacket", "blazer", "cardigan"].includes(category) || ["coat", "jacket", "blazer", "cardigan"].includes(subcategory) || item.layerRole === "outer") {
+    return "outerwear";
+  }
+  if (["shoes", "sneakers", "boots", "heels", "loafers", "footwear"].includes(category) || ["sneakers", "boots", "heels", "loafers"].includes(subcategory)) {
+    return "shoes";
+  }
+  if (item.layerRole === "accessory" || category === "accessory") {
+    return "accessories";
+  }
+  return null;
+}
+
+type OutfitRow = {
+  slot: OutfitSlotName;
+  accessoryIndex?: number;
+  item: WardrobeItem;
+};
+
+function buildOutfitRows(slots: OutfitSlotMap, itemsById: Record<string, WardrobeItem>) {
+  const rows: OutfitRow[] = [];
+  const appendRow = (slot: OutfitSlotName, itemId?: string, accessoryIndex?: number) => {
+    const item = describeItem(itemId, itemsById);
+    if (item) rows.push({ slot, accessoryIndex, item });
+  };
+
+  appendRow("top", slots.top);
+  appendRow("bottom", slots.bottom);
+  appendRow("onePiece", slots.onePiece);
+  appendRow("outerwear", slots.outerwear);
+  appendRow("shoes", slots.shoes);
+  slots.accessories?.forEach((itemId, index) => appendRow("accessories", itemId, index));
+
+  return rows;
 }
 
 export function TodayOutfitCard({
@@ -40,28 +99,62 @@ export function TodayOutfitCard({
   const [currentOutfit, setCurrentOutfit] = useState(outfit);
   const [status, setStatus] = useState<string | null>(null);
   const [seenSlotKeys, setSeenSlotKeys] = useState<string[]>([buildSlotKey(outfit.primarySlots)]);
+  const [seenItemIds, setSeenItemIds] = useState<string[]>(collectSlotItemIds(outfit.primarySlots));
   const [showAllReasoning, setShowAllReasoning] = useState(false);
 
   useEffect(() => {
     setCurrentOutfit(outfit);
     setSeenSlotKeys([buildSlotKey(outfit.primarySlots)]);
+    setSeenItemIds(collectSlotItemIds(outfit.primarySlots));
     setStatus(null);
     setShowAllReasoning(false);
   }, [outfit]);
 
-  const primary = [
-    describeItem(currentOutfit.primarySlots.top, itemsById),
-    describeItem(currentOutfit.primarySlots.bottom, itemsById),
-    describeItem(currentOutfit.primarySlots.onePiece, itemsById),
-    describeItem(currentOutfit.primarySlots.outerwear, itemsById),
-    describeItem(currentOutfit.primarySlots.shoes, itemsById),
-    ...(currentOutfit.primarySlots.accessories ?? []).map((itemId) =>
-      describeItem(itemId, itemsById),
-    ),
-  ].filter(Boolean) as WardrobeItem[];
+  const outfitRows = buildOutfitRows(currentOutfit.primarySlots, itemsById);
+  const itemsBySlot = Object.values(itemsById).reduce(
+    (groups, item) => {
+      if (item.status === "archived") return groups;
+      const slot = inferSlotFromItem(item);
+      if (!slot) return groups;
+      groups[slot].push(item);
+      return groups;
+    },
+    {
+      top: [] as WardrobeItem[],
+      bottom: [] as WardrobeItem[],
+      onePiece: [] as WardrobeItem[],
+      outerwear: [] as WardrobeItem[],
+      shoes: [] as WardrobeItem[],
+      accessories: [] as WardrobeItem[],
+    },
+  );
   const visibleReasoning = showAllReasoning
     ? currentOutfit.reasoning
     : currentOutfit.reasoning.slice(0, 1);
+
+  const swapItem = (slot: OutfitSlotName, currentItem: WardrobeItem, accessoryIndex?: number) => {
+    const slotItems = itemsBySlot[slot];
+    const currentIndex = slotItems.findIndex((item) => item.id === currentItem.id);
+    const next = slotItems[(currentIndex + 1) % slotItems.length];
+    if (!next || next.id === currentItem.id) return;
+
+    setCurrentOutfit((previous) => {
+      const nextSlots = { ...previous.primarySlots };
+      if (slot === "accessories") {
+        const accessories = [...(nextSlots.accessories ?? [])];
+        accessories[accessoryIndex ?? 0] = next.id;
+        nextSlots.accessories = accessories;
+      } else {
+        nextSlots[slot] = next.id;
+      }
+      return {
+        ...previous,
+        primarySlots: nextSlots,
+      };
+    });
+    setShowAllReasoning(false);
+    setStatus(`Swapped ${currentItem.name} for ${next.name}.`);
+  };
 
   const sendFeedback = async (reaction: "like" | "dislike" | "accept" | "reject") => {
     const response = await fetch(`/api/outfits/${currentOutfit.id}/feedback`, {
@@ -83,11 +176,14 @@ export function TodayOutfitCard({
 
   const regenerate = async () => {
     const queuedAlternate = currentOutfit.alternateSlots.find(
-      (slots) => !seenSlotKeys.includes(buildSlotKey(slots)),
+      (slots) =>
+        !seenSlotKeys.includes(buildSlotKey(slots)) &&
+        collectSlotItemIds(slots).every((itemId) => !seenItemIds.includes(itemId)),
     );
 
     if (queuedAlternate) {
       const nextKey = buildSlotKey(queuedAlternate);
+      const nextItemIds = collectSlotItemIds(queuedAlternate);
       setCurrentOutfit((previous) => ({
         ...previous,
         primarySlots: queuedAlternate,
@@ -96,6 +192,7 @@ export function TodayOutfitCard({
         ),
       }));
       setSeenSlotKeys((current) => [...current, nextKey]);
+      setSeenItemIds((current) => [...new Set([...current, ...nextItemIds])]);
       setStatus("Showing another outfit from today's alternates.");
       return;
     }
@@ -123,11 +220,13 @@ export function TodayOutfitCard({
 
       const payload = (await response.json()) as { outfit: OutfitSuggestion };
       const nextKey = buildSlotKey(payload.outfit.primarySlots);
+      const nextItemIds = collectSlotItemIds(payload.outfit.primarySlots);
       setCurrentOutfit(payload.outfit);
       setShowAllReasoning(false);
       setSeenSlotKeys((current) =>
         current.includes(nextKey) ? current : [...current, nextKey],
       );
+      setSeenItemIds((current) => [...new Set([...current, ...nextItemIds])]);
       setStatus("Fresh outfit generated.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not regenerate right now.");
@@ -148,17 +247,16 @@ export function TodayOutfitCard({
                 : "Weather-aware look"}
             </h2>
           </div>
-          <span className="rounded-full border border-white/12 px-3 py-1 text-xs text-[var(--text-soft)]">
-            {Math.round(currentOutfit.confidence * 100)}% fit
-          </span>
         </div>
       </div>
 
       <div className="space-y-5 px-5 py-5">
         <div className="space-y-3">
-          {primary.map((item) => (
+          {outfitRows.map(({ slot, accessoryIndex, item }) => {
+            const hasSwap = itemsBySlot[slot].some((option) => option.id !== item.id);
+            return (
             <div
-              key={item.id}
+              key={`${slot}-${accessoryIndex ?? item.id}`}
               className="flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-black/10 p-2.5"
             >
               {getItemImageUrl(item) ? (
@@ -176,8 +274,19 @@ export function TodayOutfitCard({
                 </p>
                 <p className="truncate text-xs text-[var(--text-soft)]">{item.colors.join(" / ")}</p>
               </div>
+              {hasSwap ? (
+                <button
+                  type="button"
+                  onClick={() => swapItem(slot, item, accessoryIndex)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 text-[var(--text-soft)] transition hover:border-[var(--accent)]/70 hover:bg-white/8 hover:text-[var(--accent)]"
+                  aria-label={`Swap ${item.name}`}
+                >
+                  <Shuffle className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="space-y-2">

@@ -8,7 +8,8 @@ import { listWardrobeItems } from "@/lib/data/repository";
 export default async function WardrobePage() {
   const user = await getCurrentUserContext();
   const items = await listWardrobeItems(user.userId);
-  const activeCount = items.filter((item) => item.status === "active").length;
+  const visibleItems = items.filter((item) => item.status !== "archived");
+  const activeCount = visibleItems.length;
 
   return (
     <>
@@ -30,16 +31,16 @@ export default async function WardrobePage() {
           <div className="rounded-[1.4rem] border border-white/10 bg-black/10 p-4">
             <div className="flex items-center gap-2 text-[var(--text-soft)]">
               <Layers3 className="h-4 w-4" />
-              Needs review
+              Total pieces
             </div>
             <p className="mt-3 text-lg font-semibold text-[var(--text-strong)]">
-              {items.filter((item) => item.status === "needs_review").length}
+              {items.length}
             </p>
           </div>
         </div>
       </SectionCard>
 
-      <WardrobeGrid items={items} />
+      <WardrobeGrid items={visibleItems} />
     </>
   );
 }
